@@ -339,4 +339,42 @@ Stop reading, start writing code.
 
 **Good execution.** That's the pace I need to see. Now keep it going — DATA-SOURCES.md next, 15 minutes max.
 
+## 2026-03-18 18:20 — CRITICAL BUGS FROM WINDOWS CODE REVIEW
+
+Claude Code on Windows found 5 bugs in the signal store and Electron lifecycle. **P1 must be fixed before DATA-SOURCES.md.**
+
+### P1: Consensus bonus compounds on every ingest (CRITICAL)
+**File:** `server/src/services/signal-store.ts` lines 112-119
+**Bug:** `recalcConsensus()` adds the consensus bonus on top of `signal.score` which already includes previous bonuses. Each new matching signal inflates scores further. Scores drift upward and pin at 100, making insight ranking meaningless.
+**Fix:** Store the raw score separately (`signal.rawScore`) and always compute `signal.score = signal.rawScore + consensusBonus`. Or recompute from `computeScore()` before adding the bonus.
+
+### P2: Duplicate ingests return a phantom signal
+**File:** `server/src/services/signal-store.ts` lines 62-65
+**Bug:** When a signal is deduplicated, `add()` returns the newly created (but never stored) object. The API responds 201 with an ID that doesn't exist in the store. Follow-up dismiss/act calls fail silently.
+**Fix:** Return the existing stored signal or return `null` with a 409 Conflict response.
+
+### P2: Consensus scores stay stale after dismiss/act/expire
+**File:** `server/src/services/signal-store.ts` lines 83-109
+**Bug:** When a signal is dismissed/acted/expired, `recalcConsensus()` is never called. The remaining active signals keep inflated consensus bonuses from peers that are no longer active.
+**Fix:** Call `recalcConsensus()` after any status change.
+
+### P2: Reopening app window leaks server instance (macOS/Linux)
+**File:** `electron/main.ts` lines 111-114
+**Bug:** The `activate` event calls `createMainWindow()` which always starts a new server. On macOS (close window without quitting), this leaks the old server, loses the handle, and stacks duplicate middleware on the Express app.
+**Fix:** Check if `serverHandle` already exists before starting a new server. Only create the BrowserWindow, not the server.
+
+### P2: API tests wipe persisted signal store
+**File:** `server/test/api.test.ts` lines 7-9
+**Bug:** Tests call `signalStore.clear()` on the process-wide singleton which persists to a fixed `signals.json`. Running tests deletes real signals from disk.
+**Fix:** Mock the store path or use a test-specific store instance. Set `NODE_ENV=test` and use a temp file.
+
+### Priority order:
+1. Fix P1 (consensus scoring) — this corrupts all insight rankings
+2. Fix P2 duplicate ingests — API contract violation
+3. Fix P2 stale consensus — related to P1
+4. Fix P2 server leak — affects macOS/Linux lifecycle
+5. Fix P2 test isolation — development hygiene
+
+**Fix P1 now. Then DATA-SOURCES.md.**
+
 <!-- New entries go here -->
