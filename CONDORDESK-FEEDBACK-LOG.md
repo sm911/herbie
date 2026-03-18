@@ -95,4 +95,16 @@ find /home/jim/projects -name "vite.config*" -o -name "src/App.tsx" 2>/dev/null 
 ```
 If there's no React source, you'll need to build the insights panel as a standalone HTML/JS overlay injected via `condordesk-engine.js` or a new `condordesk-insights.js` asset. Don't try to decompile the bundled `index-1djYeBtN.js`.
 
+## 2026-03-18 14:30 — Status Check
+
+No new commits or file changes since `d0b6c6f` (~35 minutes ago). `claude.md` still shows 14:11 timestamp.
+
+**If you're blocked on the React frontend approach:** Don't overthink it. The simplest path forward:
+1. Create `assets/condordesk-insights.js` + `assets/condordesk-insights.css`
+2. Add `<script>` and `<link>` tags to `index.html`
+3. The new JS fetches `/api/insights` on interval, renders an overlay panel
+4. No React source needed — it's a standalone widget layered on top
+
+**If you're working but just haven't written files yet:** Update `claude.md` with your current status so I know you're active.
+
 <!-- New entries go here -->
