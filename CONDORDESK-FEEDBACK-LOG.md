@@ -133,4 +133,85 @@ Without this, the "insights" panel is just repackaged signal data — not useful
 
 **The UI work you were planning is wasted effort without real data behind it.** Redirect now.
 
+## 2026-03-18 14:50 — FULL APP REVIEW + ENHANCEMENT DIRECTIVES
+
+I did a complete code review of every file in the repo. Here's what I found and what you should build next.
+
+### What's Actually Working (more than expected)
+The Discord Unusual Whales + Tradytics integration is **fully coded** — parsers, bot identification, signal normalization, scoring, consensus bonuses. The signals panel polls every 30s and renders. The playbook overlay is comprehensive (25 instruments, per-category SOPs). The insights engine produces bias/regime/favorability from signals.
+
+**The app is NOT hollow — it's a complete signal aggregation platform.** The problem is it only works when Discord is configured and bots are posting.
+
+### Correction to My Earlier Feedback
+I was wrong to say "the insights engine has no real data." It DOES have data — from Discord (UW + Tradytics) and TradingView webhooks. The scoring is real (volume/OI ratio, premium size, DTE, flow type, IV rank, consensus bonus). What it's missing is **market context data** (spot price, IV rank from the market itself, not from signal metadata). That's different from "no data."
+
+### Priority Enhancements (in order)
+
+**Enhancement 1: Make Discord integration operational**
+The code is built but Jim hasn't configured it yet. Create a setup guide or interactive first-run wizard:
+- Detect when `DISCORD_BOT_TOKEN` is missing
+- Show in the app UI: "Discord not configured — signals are offline"
+- Add a `/api/health` check that the frontend reads and displays connection status
+- The health endpoint already returns `{ discord: { configured, connected } }` — wire this into the UI
+
+**Enhancement 2: Add a real-time market data feed (Tradier recommended)**
+The insights engine scores signals but doesn't know the current SPX price or live IV. Add:
+- `server/src/services/market-data.ts` — fetches spot price + IV from Tradier (free sandbox API)
+- Register at https://developer.tradier.com — free sandbox account, no payment required
+- Endpoints needed:
+  - `GET /v1/markets/quotes?symbols=SPX,SPY,QQQ,IWM` — spot prices
+  - `GET /v1/markets/options/chains?symbol=SPX&expiration=2026-03-21` — options chain
+- Add `TRADIER_API_TOKEN` and `TRADIER_BASE_URL` to `.env.example`
+- Feed live price/IV into the insight engine so `classifyRegime()` uses real market state, not just signal metadata
+- **Start with just spot prices** — even that makes the insights dramatically more useful
+
+**Enhancement 3: Frontend insights panel**
+Don't modify the React bundle. Create `assets/condordesk-insights.js` + `assets/condordesk-insights.css`:
+- Floating panel (like the existing signals panel) showing:
+  - Market Regime badge: RANGE / TREND / MIXED / QUIET
+  - Condor Favorability score: big number 0-100 with color (green >65, yellow 45-65, red <45)
+  - Bias indicator: BULLISH / BEARISH / NEUTRAL
+  - Top 3 opportunities with action labels (SELL CONDOR / WATCH / AVOID)
+  - Active warnings list
+- Poll `/api/insights` every 30 seconds (same pattern as `condordesk-signals.js`)
+- Add `<script src="./assets/condordesk-insights.js" defer></script>` to `index.html`
+
+**Enhancement 4: Earnings/event calendar awareness**
+Iron condors over earnings are a completely different trade. Add:
+- `server/src/services/earnings-calendar.ts`
+- Fetch earnings dates from a free source (e.g., Yahoo Finance earnings calendar, or hardcode the major index ETF earnings — SPY/QQQ don't have earnings but their components do)
+- Add warning in insight engine: "Earnings within DTE window — elevated risk for condor structures"
+- For index options (SPX, NDX, RUT): flag FOMC dates, CPI releases, jobs reports — these cause regime shifts
+
+**Enhancement 5: Persist trades to backend (SQLite)**
+Currently trades only exist in localStorage (frontend). If the user clears browser data or switches machines, trades are gone.
+- Add `better-sqlite3` to server dependencies
+- Create `server/src/services/trade-store.ts` with SQLite backing
+- Add routes: `POST/GET/PATCH/DELETE /api/trades` on the server
+- Update `condordesk-engine.js` to pass trade requests through to the real server instead of intercepting them
+- Store DB at `%APPDATA%/CondorDesk/condordesk.db` (packaged) or `./data/condordesk.db` (dev)
+
+**Enhancement 6: Position risk monitor**
+After trades are persisted, add:
+- `server/src/services/position-monitor.ts`
+- For each open trade, calculate:
+  - Distance to short strikes (requires live price from Enhancement 2)
+  - Estimated P/L (requires options pricing or at minimum credit received vs current spread price)
+  - Days remaining
+  - Threat level: HEALTHY / WATCH / THREATENED / EXIT NOW
+- Surface in UI as a third panel alongside signals and insights
+
+### Architecture Guidance
+- Keep the overlay pattern (standalone JS files injected into index.html) — it works and doesn't require React source
+- The `condordesk-engine.js` fetch interceptor is clever but creates a split-brain between localStorage and server. Enhancement 5 should unify this.
+- The signal consensus scoring (+10 for multi-source agreement) is a strong differentiator — lean into it
+
+### What NOT to do
+- Don't try to decompile or modify `assets/index-1djYeBtN.js`
+- Don't add broker execution (too much liability, not needed yet)
+- Don't build a complex settings UI — a simple `.env` file is fine for now
+- Don't over-engineer the market data layer — start with Tradier sandbox, one API call every 30 seconds
+
+### Commit and push after each enhancement, not all at once.
+
 <!-- New entries go here -->
