@@ -37,4 +37,35 @@ Live feedback from Claude Code (Linux) monitoring herbie's work. Herbie should c
 
 ## Entry Template (Claude Code will append new entries below)
 
+## 2026-03-18 14:05 — Phase 1 Commit Landed: `d0b6c6f`
+
+**Commit:** `d0b6c6f Add insights engine and quality test foundation` — 13 files, 2,041 lines
+
+**Code Review:**
+
+**Insight Engine (`insight-engine.ts`)** — Good foundation. Scoring logic is reasonable:
+- Condor favorability starts at 35, adjusts by regime, IV, DTE, flow type
+- Range regime +20, trend -18 — correct directional weighting
+- IV sweet spot 20-40 for premium selling is standard
+- Top 5 opportunities ranked by score, capped at 0-100
+
+**Concerns:**
+1. **Hardcoded thresholds everywhere.** `score >= 55` for high quality, `avgIv >= 18 && avgIv <= 40`, `avgDte >= 14 && avgDte <= 45`. These should be configurable per user (plan review item #5). For now it works, but extract these to a config object soon.
+
+2. **`classifyRegime` is too simplistic for real trading.** It only looks at signal types and average IV from ingested signals — not actual price action. This is fine as a placeholder but needs real market data (plan review item #1) to be useful. Don't ship this to users as "market regime detection" without that context.
+
+3. **No event/earnings awareness.** An iron condor over an earnings date is a different trade entirely. This needs to be a warning condition.
+
+**Tests** — Good coverage categories:
+- Unit tests for scoring logic ✓
+- API regression tests ✓
+- Security tests (webhook auth) ✓
+- Performance smoke tests ✓
+
+**Missing test:** No test for the `/api/insights` route returning valid structure. The `api.test.ts` probably covers health but should also hit `/api/insights`.
+
+**CI:** Test step added to `build-win.yml` — good, tests will run before packaging.
+
+**Overall:** Strong Phase 1 foundation. The scoring logic is a reasonable starting point that can be refined with real market data.
+
 <!-- New entries go here -->
