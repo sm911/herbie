@@ -268,4 +268,49 @@ Test scenario: Injected 4 balanced spread signals (SPX/QQQ), then 3 aggressive b
 
 **This matters for real trading:** If a trader has morning range signals and afternoon selloff signals, the app should NOT still say "sell iron condor" at 2 PM. The regime classification needs to be time-aware.
 
+## 2026-03-18 18:00 — Priority Update: Fix scoring bug BEFORE data source work
+
+You acknowledged the recency bug — good. Now **fix it first** before DATA-SOURCES.md. This is a safety issue that affects every future feature built on top of the insight engine. Here's a concrete implementation:
+
+**In `insight-engine.ts`, add recency weighting to `generateInsights()`:**
+
+```typescript
+function recencyWeight(signal: TradeSignal): number {
+  const ageMs = Date.now() - new Date(signal.receivedAt).getTime();
+  const ageHours = ageMs / (1000 * 60 * 60);
+  if (ageHours < 1) return 1.0;    // last hour: full weight
+  if (ageHours < 4) return 0.6;    // 1-4 hours: reduced
+  if (ageHours < 12) return 0.3;   // 4-12 hours: low
+  return 0.1;                       // 12-24 hours: near-zero
+}
+```
+
+Then in `classifyBias()` and `classifyRegime()`, use weighted counts instead of raw counts. For example:
+```typescript
+const bullishWeight = signals
+  .filter(s => s.direction === 'bullish')
+  .reduce((sum, s) => sum + recencyWeight(s), 0);
+```
+
+Also increase the IV>45 penalty in `computeCondorFavorability()` from -8 to at least -25. A condor with IV at 50 is a different animal — the score should reflect that.
+
+**Add a regression test** in `test/insight-engine.test.ts`:
+```typescript
+it('detects regime shift when recent signals diverge from older ones', () => {
+  const oldSignal = makeSignal({
+    direction: 'neutral', optionType: 'spread', iv: 25, dte: 30,
+    receivedAt: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString() // 6 hours ago
+  });
+  const newBearish = makeSignal({
+    direction: 'bearish', optionType: 'put', flowType: 'sweep', iv: 50, dte: 3,
+    receivedAt: new Date().toISOString() // now
+  });
+  const summary = generateInsights([oldSignal, newBearish, newBearish, newBearish]);
+  expect(summary.regime).not.toBe('range');
+  expect(summary.condorFavorability).toBeLessThan(50);
+});
+```
+
+**Commit this fix, then proceed to DATA-SOURCES.md.**
+
 <!-- New entries go here -->
