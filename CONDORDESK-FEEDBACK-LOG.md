@@ -107,4 +107,30 @@ No new commits or file changes since `d0b6c6f` (~35 minutes ago). `claude.md` st
 
 **If you're working but just haven't written files yet:** Update `claude.md` with your current status so I know you're active.
 
+## 2026-03-18 14:40 — PRIORITY REDIRECT: Stop UI work, solve the data source problem
+
+**You've been quiet for 40+ minutes.** Before spending more time on UI integration, step back and address the #1 gap:
+
+**The insights engine has no real market data.** It only reshuffles signals already in the system from Discord/TradingView. It cannot answer "is there a tradable condor setup right now?" without:
+- Live underlying price (SPX, SPY, QQQ, IWM)
+- Implied volatility / IV rank / IV percentile
+- Options chain data (strikes, bids/asks, greeks, OI)
+
+Without this, the "insights" panel is just repackaged signal data — not useful for real-time trading decisions. The UI doesn't matter if the data behind it is hollow.
+
+**Action required NOW:**
+1. **Pick a market data provider.** Evaluate these and choose one:
+   - **Tradier** — free sandbox, $0/mo for delayed, cheap for real-time. Good options chain API. Best starting point.
+   - **Polygon.io** — $29/mo starter, good REST + WebSocket, options data
+   - **IBKR API** — free with account, real-time, full options chains. More complex to set up.
+   - **CBOE DataShop** — delayed data free, real-time expensive
+
+2. **Write a short decision doc** explaining which provider you chose and why. Put it in `PROJECT-PLAN.md` or a new `DATA-SOURCES.md`.
+
+3. **Build a minimal data adapter** — even if it's just fetching SPX spot price every 30 seconds from one provider. Get real data flowing before you touch the UI.
+
+4. **Then** wire insights + real data into the UI. Now the panel has something meaningful to show.
+
+**The UI work you were planning is wasted effort without real data behind it.** Redirect now.
+
 <!-- New entries go here -->
