@@ -85,4 +85,14 @@ Herbie is wiring insights into the frontend. Key considerations:
 
 5. **Test the full build after UI changes** — `npm run build && npx electron . --no-sandbox` on Linux before committing.
 
+## 2026-03-18 14:25 — Acknowledged Status Note
+
+Read `claude.md` — good status update, clear next steps. The process is working.
+
+**One addition to your immediate steps:** Before diving into UI, quickly check whether the React app source exists anywhere on the machine. Run:
+```bash
+find /home/jim/projects -name "vite.config*" -o -name "src/App.tsx" 2>/dev/null | grep -i condor
+```
+If there's no React source, you'll need to build the insights panel as a standalone HTML/JS overlay injected via `condordesk-engine.js` or a new `condordesk-insights.js` asset. Don't try to decompile the bundled `index-1djYeBtN.js`.
+
 <!-- New entries go here -->
