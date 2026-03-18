@@ -1,65 +1,104 @@
-# CondorDesk — Postmortem: Blank Window Bug
+# CondorDesk — Postmortem: Blank Window Bugs
 
-## What happened
+## Summary
 
-The Windows .exe launched but showed a completely blank window. No crash, no error — just empty.
+The Windows .exe launched but showed a blank window. This took multiple rounds to fix because there were **three separate bugs** stacking on top of each other.
 
-## Root cause: Static file serving ran before Electron set the env var
+---
 
-When esbuild bundles `electron/main.ts` and `server/src/index.ts` into a single `dist-electron/main.js`, all top-level module code runs immediately at load time.
+## Bug 1: Static root evaluated at module load time (commit 3d10c11)
 
-In `server/src/index.ts`, the static file serving was set up at the **top level**:
-
+### What happened
+`server/src/index.ts` had static file serving at the **top level**:
 ```typescript
-// This ran at module load time — BEFORE createMainWindow() set the env var
 const staticRoot = process.env.CONDORDESK_STATIC_ROOT || path.join(__dirname, '..', '..');
 app.use(express.static(staticRoot, { ... }));
 ```
 
-The execution order was:
+When esbuild bundles everything into `dist-electron/main.js`, all top-level code runs immediately. `CONDORDESK_STATIC_ROOT` wasn't set yet (Electron hadn't called `createMainWindow()`), so it fell back to `path.join(__dirname, '..', '..')` which resolved to the wrong directory.
 
-1. Bundle loads → server module executes top-level code
-2. `CONDORDESK_STATIC_ROOT` is **not yet set** (Electron hasn't called `createMainWindow()`)
-3. Falls back to `path.join(__dirname, '..', '..')`
-4. In the bundle, `__dirname` = `dist-electron/` → `../..` = `/home/jim/projects/` (wrong!)
-5. Express tries to serve `/home/jim/projects/index.html` — doesn't exist → blank page
-6. Later, `createMainWindow()` sets `CONDORDESK_STATIC_ROOT` — **too late**, static middleware already mounted with the wrong path
+### Fix
+Moved static file serving into `startServer()` so it runs after the env var is set.
 
-## The fix (commit 3d10c11)
+### Lesson
+**Never evaluate paths at module top level when bundling with esbuild.** Any path depending on Electron env vars must be deferred to a function.
 
-Moved the static file serving from **top-level module code** into the `startServer()` function. This way it runs **after** Electron has set `CONDORDESK_STATIC_ROOT`:
+---
 
+## Bug 2: Error handler mounted before static routes (commit fb1a4a7)
+
+### What happened
+After moving static serving into `startServer()`, the error handler was still at the top level:
 ```typescript
-// BEFORE (broken): top-level, runs at import time
-const staticRoot = process.env.CONDORDESK_STATIC_ROOT || path.join(__dirname, '..', '..');
-app.use(express.static(staticRoot, { ... }));
+app.use(errorHandler);  // mounted at load time
 
-// AFTER (fixed): inside startServer(), runs after env var is set
-export async function startServer(options) {
-  const staticRoot = process.env.CONDORDESK_STATIC_ROOT || path.join(__dirname, '..', '..');
-  app.use(express.static(staticRoot, { ... }));
-  // ...
+export async function startServer() {
+  app.use(express.static(...));  // mounted later
 }
 ```
 
-## Also fixed (commit 9caa6e2)
+Express processes middleware **in order of mounting**. The error handler caught everything before static files got a chance to serve.
 
-Added `asarUnpack` to `package.json` so `index.html` and `assets/` are extracted as real files on disk. Express's `express.static()` can't reliably serve files from inside an asar archive:
+### Fix
+Moved `app.use(errorHandler)` into `startServer()`, after the static routes.
 
-```json
-"asarUnpack": [
-  "assets/**/*",
-  "index.html"
-]
+### Lesson
+**Express middleware order matters.** Error handlers must be mounted LAST, after all routes and static serving.
+
+---
+
+## Bug 3: Server starting twice — the esbuild bundling trap (commit 68cd771)
+
+### What happened
+The server had a standalone guard:
+```typescript
+if (require.main === module) {
+  void startServer({ host: '127.0.0.1', port: config.port });
+}
 ```
 
-## Verified
+When esbuild bundles `electron/main.ts` + `server/src/index.ts` into a single file, `require.main === module` is **always true** because both refer to the same top-level module (`dist-electron/main.js`).
 
-- Tested on Linux with `npx electron . --no-sandbox`
-- Server starts, reports correct static root
-- `curl` confirms `index.html` and `assets/*.js` serve with HTTP 200
-- Both fixes pushed to main
+This caused:
+1. Bundle loads → guard fires → server auto-starts on port 8080 with WRONG static root
+2. The auto-started server registers a `*` catch-all handler
+3. Later, `createMainWindow()` sets correct env var and calls `startServer()` on a random port
+4. New static middleware is appended to the SAME Express app, but the first `*` handler already catches everything
+5. Every request → first catch-all → `res.sendFile('resources/index.html')` → ENOENT → blank
 
-## Lesson for future Electron + Express bundling
+### Fix
+Two changes:
+```typescript
+// 1. Prevent auto-start in Electron
+if (require.main === module && !process.versions.electron) {
+  void startServer(...);
+}
 
-**Never evaluate paths at module top level when bundling with esbuild.** Any path that depends on Electron APIs (`app.isPackaged`, `process.resourcesPath`) or env vars set by Electron must be deferred to a function that runs after Electron is ready.
+// 2. Use app.getAppPath() instead of hardcoded paths
+if (app.isPackaged) {
+  process.env.CONDORDESK_STATIC_ROOT = app.getAppPath();
+}
+```
+
+`app.getAppPath()` works regardless of whether asar is enabled or disabled.
+
+### Lesson
+**esbuild flattens everything into one module.** Guards like `require.main === module` become meaningless. Always add an explicit check for the runtime environment (e.g., `!process.versions.electron`).
+
+---
+
+## Additional fix: asar disabled (commit 2f1f000)
+
+Express's `express.static()` can't reliably serve files from inside an asar archive. Disabled asar packaging so static files exist as real files on disk. This is fine for a personal tool.
+
+---
+
+## Key takeaways for future Electron + Express + esbuild projects
+
+1. **Defer all path resolution** to runtime functions, never module top-level
+2. **Express middleware order is critical** — static routes before error handler, always
+3. **esbuild makes `require.main === module` useless** — use `process.versions.electron` to detect runtime
+4. **`app.getAppPath()`** is the reliable way to find your app root in packaged Electron
+5. **Disable asar** when using Express static serving (or use a different serving strategy)
+6. **Always test the packaged app**, not just dev mode — they have different path resolution
+7. **Test on Linux first** before shipping to Windows — faster iteration cycle
