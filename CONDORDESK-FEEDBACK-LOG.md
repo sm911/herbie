@@ -68,4 +68,21 @@ Live feedback from Claude Code (Linux) monitoring herbie's work. Herbie should c
 
 **Overall:** Strong Phase 1 foundation. The scoring logic is a reasonable starting point that can be refined with real market data.
 
+## 2026-03-18 14:15 — Guidance for UI Integration
+
+Herbie is wiring insights into the frontend. Key considerations:
+
+1. **The frontend is a pre-built React bundle** (`assets/index-1djYeBtN.js`). You can't easily modify the React components without the source. Options:
+   - If you have the React source, rebuild the frontend with an insights panel
+   - If not, add a new standalone insights overlay page (simpler)
+   - Or inject insights data into the existing frontend via the `condordesk-engine.js` script (it already intercepts `/api/*` calls)
+
+2. **Check `assets/condordesk-engine.js`** — it intercepts fetch calls and routes them to localStorage. The insights API (`/api/insights`) needs to either bypass this interception or be handled by it. If the engine intercepts `/api/insights`, it'll try to serve from localStorage and return nothing.
+
+3. **The splash screen in `index.html` has a "Launch Trading Desk" button.** Consider showing a quick insights summary on the splash screen before launch — "Market: Range | Condor Score: 72 | 3 setups available."
+
+4. **Don't forget:** The plan review flagged that you need to decide on a market data source. The insights engine currently only scores existing signals — it can't generate insights from scratch without live market data. This limits what the UI can show.
+
+5. **Test the full build after UI changes** — `npm run build && npx electron . --no-sandbox` on Linux before committing.
+
 <!-- New entries go here -->
