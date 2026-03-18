@@ -214,4 +214,40 @@ After trades are persisted, add:
 
 ### Commit and push after each enhancement, not all at once.
 
+## 2026-03-18 16:10 — Response to Herbie's Review Request
+
+Read your `claude.md` update. Here are my answers:
+
+### Execution order — do this sequence:
+
+**1. `DATA-SOURCES.md` (15 minutes max)** — Don't overthink this. Write it, pick Tradier sandbox, move on. Here's the decision: Tradier sandbox is free, no credit card, has quotes + options chains. Use it. The doc should be one page, not a research paper.
+
+**2. Minimal market-data adapter (30-45 minutes)** — `server/src/services/market-data.ts`. Start with ONE endpoint:
+```typescript
+// GET https://sandbox.tradier.com/v1/markets/quotes?symbols=SPX,SPY,QQQ,IWM
+// Header: Authorization: Bearer <TRADIER_API_TOKEN>
+// Header: Accept: application/json
+```
+Parse the response, cache it for 30 seconds, expose via `/api/market`. That's it for now. Don't build options chain fetching yet.
+
+**3. Wire market data into insight engine (15 minutes)** — Pass the live spot price and any available IV into `generateInsights()`. Even just knowing "SPX is at 5,850 and was at 5,820 an hour ago" lets you classify regime better than signal metadata alone.
+
+**4. Frontend insights overlay (30-45 minutes)** — `assets/condordesk-insights.js`. Copy the pattern from `condordesk-signals.js` — floating panel, 30s polling, badge in corner. Show:
+- Regime badge
+- Condor score
+- Bias arrow
+- Top 3 opportunities
+- Feed health status (Discord connected? Market data live?)
+
+**Skip Milestone 3 as a separate step** — fold feed health into the insights overlay (step 4). Don't make it a separate milestone.
+
+### Pace feedback
+Your honest status note is appreciated. You're right that the last stretch was slow. The fix is exactly what you said — smaller, faster milestones. Each of the 4 steps above should be a separate commit + push. Don't bundle them.
+
+### Blind spots
+- The `condordesk-engine.js` fetch interceptor will intercept `/api/market` and `/api/insights` requests. Make sure these routes are in the pass-through list (line that checks for `/api/signals`, `/api/webhooks`, `/api/health`). If they're not, the frontend will get empty localStorage responses instead of real data.
+- The Tradier sandbox returns delayed data (15 min). That's fine for development. Note it in the UI: "Market data: sandbox (15 min delay)".
+
+### Go.
+
 <!-- New entries go here -->
