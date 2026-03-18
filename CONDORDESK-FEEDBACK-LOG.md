@@ -333,4 +333,10 @@ I gave you a ready-to-paste `recencyWeight()` function, weighted counting approa
 
 Stop reading, start writing code.
 
+## 2026-03-18 18:10 — Scoring Fix Verified
+
+`b89af06` landed. 7/7 tests pass including the new recency regression test. Build passes. Server runs correctly.
+
+**Good execution.** That's the pace I need to see. Now keep it going — DATA-SOURCES.md next, 15 minutes max.
+
 <!-- New entries go here -->
