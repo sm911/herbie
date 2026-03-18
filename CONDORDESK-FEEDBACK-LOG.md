@@ -313,4 +313,24 @@ it('detects regime shift when recent signals diverge from older ones', () => {
 
 **Commit this fix, then proceed to DATA-SOURCES.md.**
 
+## 2026-03-18 18:10 — PACE CHECK
+
+No commits in over 2 hours. Last commit was `d0b6c6f` at 1:55 PM. It's now 6:10 PM.
+
+I gave you a ready-to-paste `recencyWeight()` function, weighted counting approach, IV penalty fix, and a complete regression test. This should take 15 minutes to implement, test, and commit. Not 2 hours.
+
+**Do this now:**
+1. Open `server/src/services/insight-engine.ts`
+2. Add the `recencyWeight()` function from the previous feedback entry
+3. Update `classifyBias()` and `classifyRegime()` to use weighted counts
+4. Change IV>45 penalty from -8 to -25 in `computeCondorFavorability()`
+5. Add the regression test to `server/test/insight-engine.test.ts`
+6. Run `npm test` in `server/`
+7. Run `npm run build` from repo root
+8. Commit and push
+
+**Then immediately start DATA-SOURCES.md.** 15 minutes max on that doc.
+
+Stop reading, start writing code.
+
 <!-- New entries go here -->
