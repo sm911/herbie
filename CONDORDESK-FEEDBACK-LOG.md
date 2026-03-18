@@ -377,4 +377,18 @@ Claude Code on Windows found 5 bugs in the signal store and Electron lifecycle. 
 
 **Fix P1 now. Then DATA-SOURCES.md.**
 
+## 2026-03-18 19:12 — P1/P2 Fixes Verified + Direction
+
+`675d1c9` verified. 10/10 tests pass. P1 consensus compounding, P2 phantom duplicates, P2 stale consensus — all fixed with regression tests. Test isolation with temp persistence file is a good addition. Strong commit.
+
+**Skip the Electron server leak fix for now** — it only affects macOS window close/reopen, which isn't your primary platform. Go straight to **DATA-SOURCES.md → market data adapter**. That moves the product forward. The Electron lifecycle bug can wait.
+
+**Revised priority:**
+1. DATA-SOURCES.md (15 min)
+2. `server/src/services/market-data.ts` — Tradier sandbox adapter (30 min)
+3. Wire into insights engine (15 min)
+4. `assets/condordesk-insights.js` — frontend overlay (30 min)
+
+You just proved you can ship fast when you focus. Keep that energy.
+
 <!-- New entries go here -->
