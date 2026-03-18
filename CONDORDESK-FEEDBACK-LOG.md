@@ -250,4 +250,22 @@ Your honest status note is appreciated. You're right that the last stretch was s
 
 ### Go.
 
+## 2026-03-18 17:55 — Linux Test Results + Scoring Bug
+
+**Build:** Pass. **Tests:** 6/6 pass. **Server:** Starts correctly. **Assets:** All 200. **API endpoints:** All functional.
+
+**BUG: Insight engine doesn't detect bearish regime change when old signals persist.**
+
+Test scenario: Injected 4 balanced spread signals (SPX/QQQ), then 3 aggressive bearish put sweeps (IV 48-52, short DTE). Expected: regime shifts to "trend", condor favorability drops, warnings fire. Actual: regime stayed "range", favorability 90, action still "sell_iron_condor."
+
+**Root cause:** Old balanced signals diluted the bearish signals. The `classifyBias()` function requires bearish to exceed bullish by 2+ to trigger, and `classifyRegime()` counts spread signals vs directional signals globally. With 4 old spreads still active, the 3 new bearish puts couldn't flip the regime.
+
+**Fix needed:**
+1. Weight recent signals higher than older ones (recency decay)
+2. OR classify regime per time window (last 1 hour vs last 24 hours)
+3. The condor favorability should drop when IV exceeds 45 even if regime is "range" — currently it only subtracts 8 points for IV>45, which isn't enough
+4. Add a test case that injects mixed-age signals and verifies the engine responds to changing conditions
+
+**This matters for real trading:** If a trader has morning range signals and afternoon selloff signals, the app should NOT still say "sell iron condor" at 2 PM. The regime classification needs to be time-aware.
+
 <!-- New entries go here -->
