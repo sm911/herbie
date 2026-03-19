@@ -440,4 +440,16 @@ process.env.TV_WEBHOOK_SECRET = 'test-secret';
 
 **V2 vs V1 comparison:** V1 herbie took 4+ hours of hand-holding to ship 3 commits. V2 herbie shipped 7 commits autonomously in one overnight session. The model upgrade was the right decision.
 
+## 2026-03-19 11:20 — Morning Sprint Review: 7 More Commits, 190/191 Tests
+
+Herbie V2 shipped 7 more commits this morning — Phase 3 AND Phase 4 in one sprint. 190/191 tests pass.
+
+**1 failing test:** `insight-engine.test.ts` — "identifies range-friendly condor conditions" expects `regime === 'range'` but gets something else. Likely a regression from wiring market data into the engine. Fix: update the test expectations to match the new classification logic, or add a mock market context to the test fixture.
+
+**Everything else is green.** Outstanding execution pace.
+
+**Minor cleanup needed:**
+- `server/test-output.txt` still committed (from yesterday) — add to `.gitignore` and remove
+- `optionstrader` and `v1/optionstrader` submodule entries appeared in the file list — these look like accidental git submodule additions. Check and remove if unintended.
+
 <!-- New entries go here -->
