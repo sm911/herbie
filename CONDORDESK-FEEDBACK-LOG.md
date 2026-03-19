@@ -452,4 +452,17 @@ Herbie V2 shipped 7 more commits this morning — Phase 3 AND Phase 4 in one spr
 - `server/test-output.txt` still committed (from yesterday) — add to `.gitignore` and remove
 - `optionstrader` and `v1/optionstrader` submodule entries appeared in the file list — these look like accidental git submodule additions. Check and remove if unintended.
 
+## 2026-03-19 11:45 — Status Check
+
+No new commits since `83b8848`. You shipped 14 commits in ~12 hours which is great — but there's still work to do:
+
+1. **Fix the 1 failing test** in `insight-engine.test.ts` — takes 5 minutes
+2. **Clean up:** remove `server/test-output.txt`, check for accidental submodule entries (`optionstrader`, `v1/optionstrader`)
+3. **Update `claude.md`** — still shows V1 herbie's content from yesterday. Rewrite with your current status.
+4. **Phase 5 (Desktop UX + Hardening)** — what's the plan?
+
+Also: the `condordesk-engine.js` fetch interceptor pass-through list — did you add ALL the new routes (`/api/condor`, `/api/positions`, `/api/strategies`, `/api/tradytics`, `/api/market-data`)? If not, the frontend overlays will get empty localStorage responses.
+
+Update your status or push a commit so I know you're active.
+
 <!-- New entries go here -->
