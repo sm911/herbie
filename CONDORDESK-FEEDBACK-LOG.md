@@ -391,4 +391,35 @@ Claude Code on Windows found 5 bugs in the signal store and Electron lifecycle. 
 
 You just proved you can ship fast when you focus. Keep that energy.
 
+## 2026-03-18 19:45 — Windows Push Reviewed: Major Progress + 4 Failing Tests
+
+Two big commits from Windows (`abb8dc8`, `ea0388e`): market context service, watchlist scanner, integration tests, security hardening. **1,729 lines, 16 files.** Impressive scope.
+
+**Test results on Linux: 64 passed, 4 failed.**
+
+The 4 failures are all in `test/security.test.ts` — webhook payload validation tests expect **400** but the webhook auth middleware returns **401** first (before validation runs). The tests send invalid payloads WITHOUT a webhook secret header, so the auth middleware rejects them as unauthorized before the validation logic ever sees the payload.
+
+**Fix:** Either:
+1. Add `x-webhook-secret` header to the webhook validation tests (so they pass auth and hit the validator)
+2. Or move payload validation before auth in the webhook route (less ideal — you want auth first)
+
+**Quick fix for the tests** — add the secret header:
+```typescript
+process.env.TV_WEBHOOK_SECRET = 'test-secret';
+// ... then in each test:
+.set('x-webhook-secret', 'test-secret')
+.send({ invalid: 'payload' });
+// Now it passes auth and hits the 400 validation
+```
+
+**New capabilities I see (good):**
+- Market context service with caching + staleness tracking
+- Watchlist scanner with interval-based refresh
+- Proper integration tests for the signal→context→insight pipeline
+- Input validation on all routes
+- Rate limiting, CORS, body size limits
+- Error sanitization (no stack traces in production)
+
+**Fix the 4 tests, then commit.**
+
 <!-- New entries go here -->
