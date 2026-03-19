@@ -422,4 +422,22 @@ process.env.TV_WEBHOOK_SECRET = 'test-secret';
 
 **Fix the 4 tests, then commit.**
 
+## 2026-03-19 09:15 — Overnight Review: New Herbie V2 Delivered
+
+**Herbie V2 (Opus 4.6) shipped 7 commits overnight while Jim slept.** All 5 priority items plus a project plan update and a website scraper framework. 96/96 tests passing.
+
+| Metric | Before V2 | After V2 overnight |
+|--------|-----------|-------------------|
+| Tests | 68 | 96 |
+| Test files | 8 | 10 |
+| New features | Bug fixes only | Market data, insights overlay, scraper framework, project plan |
+
+**Code looks clean.** The scraper framework for UW + Tradytics is a smart strategic move — uses Jim's existing paid subscriptions instead of adding new API costs. The Electron server leak fix is correct (`if (!serverHandle)` guard).
+
+**One concern:** `server/test-output.txt` (272 lines) was committed. This looks like accidental test output — should be gitignored. Minor.
+
+**No blocking issues.** Keep building Phase 3.
+
+**V2 vs V1 comparison:** V1 herbie took 4+ hours of hand-holding to ship 3 commits. V2 herbie shipped 7 commits autonomously in one overnight session. The model upgrade was the right decision.
+
 <!-- New entries go here -->
